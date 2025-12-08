@@ -8,5 +8,18 @@ public class MyApp extends Application {
     public void onCreate() {
         super.onCreate();
         Configuration.getInstance().setUserAgentValue(getPackageName());
+
+        File basePath = new File(getCacheDir(), "osmdroid");
+        File tileCache = new File(basePath, "tiles");
+
+        if (!basePath.exists()) {
+            basePath.mkdirs();
+        }
+        if (!tileCache.exists()) {
+            tileCache.mkdirs();
+        }
+
+        Configuration.getInstance().setOsmdroidBasePath(basePath);
+        Configuration.getInstance().setOsmdroidTileCache(tileCache);
     }
 }
