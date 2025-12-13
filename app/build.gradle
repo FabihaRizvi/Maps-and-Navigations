@@ -40,4 +40,5 @@ dependencies {
     androidTestImplementation libs.espresso.core
     implementation libs.osmdroid.android
     implementation libs.osmdroid.android.v6118
+    implementation libs.play.services.location.v2101
 }

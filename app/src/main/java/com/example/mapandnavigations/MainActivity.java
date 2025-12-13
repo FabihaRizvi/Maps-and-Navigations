@@ -1,131 +1,124 @@
 package com.example.mapandnavigations;
 import android.Manifest;
+import android.app.AlertDialog;
+import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.location.Location;
+import android.location.LocationManager;
 import android.os.Bundle;
-import android.os.Looper;
-
-import androidx.activity.EdgeToEdge;
+import android.provider.Settings;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
-
-import com.google.android.gms.location.FusedLocationProviderClient;
-import com.google.android.gms.location.LocationCallback;
-import com.google.android.gms.location.LocationRequest;
-import com.google.android.gms.location.LocationResult;
-import com.google.android.gms.location.LocationServices;
-
-import org.osmdroid.views.MapView;
 import org.osmdroid.config.Configuration;
 import org.osmdroid.util.GeoPoint;
-import org.osmdroid.views.overlay.Marker;
+import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider;
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay;
 
 public class MainActivity extends AppCompatActivity {
 
     private MapView mapView;
-    private FusedLocationProviderClient fusedLocationClient;
-    private Marker myLocationMarker;
-    private boolean followMe = true;
+    private MyLocationNewOverlay locationOverlay;
+
+    private static final int LOCATION_PERMISSION_REQUEST = 100;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         Configuration.getInstance().setUserAgentValue(getPackageName());
         setContentView(R.layout.activity_main);
 
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+        checkLocationEnabled();
 
         mapView = findViewById(R.id.map);
         mapView.setMultiTouchControls(true);
-
         mapView.getController().setZoom(15.0);
         mapView.getController().setCenter(new GeoPoint(24.8607, 67.0011));
 
+        requestLocationPermissions();
+    }
+
+    private void setupLocationOverlay() {
         GpsMyLocationProvider provider = new GpsMyLocationProvider(this);
         provider.addLocationSource("gps");
         provider.addLocationSource("network");
 
-        MyLocationNewOverlay locationOverlay = new MyLocationNewOverlay(provider, mapView);
+        locationOverlay = new MyLocationNewOverlay(provider, mapView);
         locationOverlay.enableMyLocation();
         locationOverlay.enableFollowLocation();
         locationOverlay.setDrawAccuracyEnabled(true);
 
         mapView.getOverlays().add(locationOverlay);
-
-        requestLocationPermissions();
-
-        startLocationUpdates();
-    }
-
-    @Override
-    protected void onResume(){
-        super.onResume();
-        Configuration.getInstance().load(this, getSharedPreferences("osmdroid", MODE_PRIVATE));
-        mapView.onResume();
-    }
-
-    @Override
-    protected void onPause(){
-        super.onPause();
-        Configuration.getInstance().save(this, getSharedPreferences("osmdroid", MODE_PRIVATE));
-        mapView.onPause();
     }
 
     private void requestLocationPermissions() {
-        if (checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)
+        if (ActivityCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(
+
+            ActivityCompat.requestPermissions(
+                    this,
                     new String[]{
-                            android.Manifest.permission.ACCESS_FINE_LOCATION,
-                            android.Manifest.permission.ACCESS_COARSE_LOCATION
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION
                     },
-                    100
+                    LOCATION_PERMISSION_REQUEST
             );
+        } else {
+            setupLocationOverlay();
         }
     }
 
-    private void startLocationUpdates() {
-        LocationRequest locationRequest = LocationRequest.create();
-        locationRequest.setInterval(1000);
-        locationRequest.setFastestInterval(500);
-        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           String[] permissions,
+                                           int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
-        if (ActivityCompat.checkSelfPermission(this,
-                Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            return;
+        if (requestCode == LOCATION_PERMISSION_REQUEST &&
+                grantResults.length > 0 &&
+                grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+
+            setupLocationOverlay();
         }
+    }
 
-        LocationCallback locationCallback = new LocationCallback() {
-            @Override
-            public void onLocationResult(LocationResult locationResult) {
-                if (locationResult == null) return;
+    private void checkLocationEnabled() {
+        LocationManager locationManager =
+                (LocationManager) getSystemService(LOCATION_SERVICE);
 
-                Location location = locationResult.getLastLocation();
-                if (location == null) return;
+        boolean gpsEnabled =
+                locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
 
-                double lat = location.getLatitude();
-                double lon = location.getLongitude();
+        if (!gpsEnabled) {
+            new AlertDialog.Builder(this)
+                    .setTitle("Location Required")
+                    .setMessage("Please turn on location services to continue")
+                    .setCancelable(false)
+                    .setPositiveButton("Turn On", (dialog, which) -> {
+                        startActivity(
+                                new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+                        );
+                    })
+                    .show();
+        }
+    }
 
-                GeoPoint newPoint = new GeoPoint(lat, lon);
+    @Override
+    protected void onResume() {
+        super.onResume();
+        mapView.onResume();
+        if (locationOverlay != null) {
+            locationOverlay.enableMyLocation();
+        }
+    }
 
-                myLocationMarker.setPosition(newPoint);
-
-                mapView.getController().animateTo(newPoint);
-
-                if (followMe) {
-                    mapView.getController().animateTo(newPoint);
-                }
-
-                mapView.invalidate();
-            }
-        };
-
-        fusedLocationClient.requestLocationUpdates(
-                locationRequest,
-                locationCallback,
-                Looper.getMainLooper()
-        );
+    @Override
+    protected void onPause() {
+        super.onPause();
+        mapView.onPause();
+        if (locationOverlay != null) {
+            locationOverlay.disableMyLocation();
+        }
     }
 }
