@@ -13,6 +13,10 @@ import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider;
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay;
+import org.osmdroid.views.overlay.Marker;
+import org.osmdroid.events.MapEventsReceiver;
+import org.osmdroid.views.overlay.MapEventsOverlay;
+
 
 public class MainActivity extends AppCompatActivity {
 
@@ -20,6 +24,9 @@ public class MainActivity extends AppCompatActivity {
     private MyLocationNewOverlay locationOverlay;
 
     private static final int LOCATION_PERMISSION_REQUEST = 100;
+    private GeoPoint destinationPoint;
+    private Marker destinationMarker;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,6 +43,7 @@ public class MainActivity extends AppCompatActivity {
         mapView.getController().setCenter(new GeoPoint(24.8607, 67.0011));
 
         requestLocationPermissions();
+        enableDestinationTap();
     }
 
     private void setupLocationOverlay() {
@@ -49,6 +57,34 @@ public class MainActivity extends AppCompatActivity {
         locationOverlay.setDrawAccuracyEnabled(true);
 
         mapView.getOverlays().add(locationOverlay);
+        locationOverlay.runOnFirstFix(() -> {
+
+            runOnUiThread(() -> {
+
+                GeoPoint userPoint = locationOverlay.getMyLocation();
+                if (userPoint == null || destinationPoint == null) return;
+
+                float[] results = new float[1];
+
+                android.location.Location.distanceBetween(
+                        userPoint.getLatitude(),
+                        userPoint.getLongitude(),
+                        destinationPoint.getLatitude(),
+                        destinationPoint.getLongitude(),
+                        results
+                );
+
+                float distanceMeters = results[0];
+
+
+                destinationMarker.setSnippet(
+                        "Distance: " + (int) distanceMeters + " m"
+                );
+
+                mapView.invalidate();
+            });
+        });
+
     }
 
     private void requestLocationPermissions() {
@@ -121,4 +157,42 @@ public class MainActivity extends AppCompatActivity {
             locationOverlay.disableMyLocation();
         }
     }
+
+    private void enableDestinationTap() {
+
+        MapEventsReceiver receiver = new MapEventsReceiver() {
+            @Override
+            public boolean singleTapConfirmedHelper(GeoPoint p) {
+
+                setDestination(p);
+                return true;
+            }
+
+            @Override
+            public boolean longPressHelper(GeoPoint p) {
+                return false;
+            }
+        };
+
+        MapEventsOverlay eventsOverlay = new MapEventsOverlay(receiver);
+        mapView.getOverlays().add(eventsOverlay);
+    }
+
+    private void setDestination(GeoPoint point) {
+
+        destinationPoint = point;
+
+        if (destinationMarker != null) {
+            mapView.getOverlays().remove(destinationMarker);
+        }
+
+        destinationMarker = new Marker(mapView);
+        destinationMarker.setPosition(point);
+        destinationMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
+        destinationMarker.setTitle("Destination");
+
+        mapView.getOverlays().add(destinationMarker);
+
+    }
+
 }
