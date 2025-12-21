@@ -1,4 +1,4 @@
-package com.example.mapandnavigations;
+package com.example.mapandnavigations.app;
 import android.app.Application;
 import org.osmdroid.config.Configuration;
 import java.io.File;

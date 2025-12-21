@@ -1,4 +1,4 @@
-package com.example.mapandnavigations;
+package com.example.mapandnavigations.ui;
 import android.Manifest;
 import android.app.AlertDialog;
 import android.content.Intent;
@@ -8,14 +8,23 @@ import android.os.Bundle;
 import android.provider.Settings;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+
+import com.example.mapandnavigations.R;
+
 import org.osmdroid.config.Configuration;
 import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
+import org.osmdroid.views.overlay.Polyline;
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider;
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay;
 import org.osmdroid.views.overlay.Marker;
 import org.osmdroid.events.MapEventsReceiver;
 import org.osmdroid.views.overlay.MapEventsOverlay;
+import com.example.mapandnavigations.navigation.RouteManager;
+import com.example.mapandnavigations.model.RoutePoint;
+
+import java.util.ArrayList;
+import java.util.List;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -193,6 +202,42 @@ public class MainActivity extends AppCompatActivity {
 
         mapView.getOverlays().add(destinationMarker);
 
+//        saveDemoRoute();
+        testRoute();
+
     }
+
+    private void saveDemoRoute(GeoPoint start, GeoPoint end) {
+
+        List<RoutePoint> route = new ArrayList<>();
+
+        route.add(new RoutePoint(start.getLatitude(), start.getLongitude()));
+        route.add(new RoutePoint(end.getLatitude(), end.getLongitude()));
+
+        RouteManager.saveRoute(this, route);
+    }
+
+    private void drawRoute(List<GeoPoint> points) {
+        Polyline routeLine = new Polyline();
+        routeLine.setPoints(points);
+        routeLine.setWidth(8f);
+
+        mapView.getOverlays().add(routeLine);
+        mapView.invalidate();
+    }
+
+
+    private void testRoute() {
+        List<GeoPoint> testPoints = new ArrayList<>();
+
+        testPoints.add(new GeoPoint(24.8607, 67.0011));
+        testPoints.add(new GeoPoint(24.8620, 67.0030));
+        testPoints.add(new GeoPoint(24.8640, 67.0055));
+        testPoints.add(destinationPoint);
+
+        drawRoute(testPoints);
+    }
+
+
 
 }
