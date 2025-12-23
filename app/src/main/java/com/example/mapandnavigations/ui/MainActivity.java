@@ -20,6 +20,8 @@ import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay;
 import org.osmdroid.views.overlay.Marker;
 import org.osmdroid.events.MapEventsReceiver;
 import org.osmdroid.views.overlay.MapEventsOverlay;
+
+import com.example.mapandnavigations.navigation.RouteLoader;
 import com.example.mapandnavigations.navigation.RouteManager;
 import com.example.mapandnavigations.model.RoutePoint;
 
@@ -53,6 +55,16 @@ public class MainActivity extends AppCompatActivity {
 
         requestLocationPermissions();
         enableDestinationTap();
+
+        List<RoutePoint> route =
+                RouteLoader.loadRoute(this);
+
+//        Log.d("ROUTE_SIZE", "Loaded points: " + route.size());
+
+//        Log.d("TILES", "Tile cache path: " +
+//                Configuration.getInstance().getOsmdroidTileCache().getAbsolutePath());
+
+
     }
 
     private void setupLocationOverlay() {
@@ -194,7 +206,6 @@ public class MainActivity extends AppCompatActivity {
         if (destinationMarker != null) {
             mapView.getOverlays().remove(destinationMarker);
         }
-
         destinationMarker = new Marker(mapView);
         destinationMarker.setPosition(point);
         destinationMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
