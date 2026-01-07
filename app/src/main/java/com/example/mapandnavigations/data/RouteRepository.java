@@ -1,20 +1,20 @@
-package com.example.mapandnavigations.navigation;
-import com.example.mapandnavigations.model.RoutePoint;
+package com.example.mapandnavigations.data;
 import android.content.Context;
 import android.content.SharedPreferences;
+import com.example.mapandnavigations.model.RoutePoint;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
 
-public class RouteManager {
+public class RouteRepository {
+
     private static final String PREF_NAME = "offline_routes";
     private static final String KEY_ROUTE = "saved_route";
 
     public static void saveRoute(Context context, List<RoutePoint> points) {
         try {
             JSONArray array = new JSONArray();
-
             for (RoutePoint p : points) {
                 JSONObject obj = new JSONObject();
                 obj.put("lat", p.latitude);
@@ -25,9 +25,7 @@ public class RouteManager {
             SharedPreferences prefs =
                     context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
 
-            prefs.edit()
-                    .putString(KEY_ROUTE, array.toString())
-                    .apply();
+            prefs.edit().putString(KEY_ROUTE, array.toString()).apply();
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -57,7 +55,6 @@ public class RouteManager {
         } catch (Exception e) {
             e.printStackTrace();
         }
-
         return points;
     }
 }

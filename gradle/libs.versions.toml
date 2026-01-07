@@ -13,6 +13,7 @@ osmdroidAndroid = "6.1.20"
 osmdroidAndroidVersion = "6.1.18"
 playServicesLocation = "21.3.0"
 playServicesLocationVersion = "21.0.1"
+osmdroid = "6.1.18"
 
 [libraries]
 android = { module = "com.mapbox.maps:android", version.ref = "android" }
