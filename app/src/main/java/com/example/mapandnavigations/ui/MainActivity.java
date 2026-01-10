@@ -6,6 +6,8 @@ import android.content.pm.PackageManager;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.widget.Toast;
+
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.lifecycle.ViewModelProvider;
@@ -173,7 +175,18 @@ public class MainActivity extends AppCompatActivity {
 
     private void observeRoute() {
         mapViewModel.routeLiveData.observe(this, route -> {
-            if (route == null || route.isEmpty()) return;
+
+            if (route == null) {
+                Toast.makeText(
+                        this,
+                        "No internet connection. Route not available offline.",
+                        Toast.LENGTH_LONG
+                ).show();
+                return;
+            }
+
+            if (route.isEmpty()) return;
+
             drawRoute(route);
         });
     }

@@ -26,4 +26,15 @@ public class RouteCalculator {
         }
         return list;
     }
+
+    public static List<GeoPoint> toGeoPoints(List<RoutePoint> points) {
+        List<GeoPoint> geoPoints = new ArrayList<>();
+
+        for (RoutePoint p : points) {
+            geoPoints.add(new GeoPoint(p.latitude, p.longitude));
+        }
+
+        return geoPoints;
+    }
+
 }
