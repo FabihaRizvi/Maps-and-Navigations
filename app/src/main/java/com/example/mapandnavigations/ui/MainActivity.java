@@ -6,12 +6,13 @@ import android.content.pm.PackageManager;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.provider.Settings;
+import androidx.appcompat.widget.SearchView;
 import android.widget.Toast;
-
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.lifecycle.ViewModelProvider;
 import com.example.mapandnavigations.R;
+import com.example.mapandnavigations.network.NominatimService;
 import com.example.mapandnavigations.viewmodel.MapViewModel;
 import org.osmdroid.config.Configuration;
 import org.osmdroid.views.overlay.MapEventsOverlay;
@@ -22,7 +23,6 @@ import org.osmdroid.views.overlay.Marker;
 import org.osmdroid.views.overlay.Polyline;
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider;
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay;
-import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
@@ -34,6 +34,9 @@ public class MainActivity extends AppCompatActivity {
     private Marker destinationMarker;
 
     private MapViewModel mapViewModel;
+    private Polyline currentRouteLine;
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,6 +53,51 @@ public class MainActivity extends AppCompatActivity {
         enableDestinationTap();
 
         observeRoute();
+
+        SearchView searchView = findViewById(R.id.searchView);
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+
+                new Thread(() -> {
+                    GeoPoint point = NominatimService.searchPlace(query);
+
+                    runOnUiThread(() -> {
+                        if (point != null) {
+                            setDestination(point);
+                        } else {
+                            Toast.makeText(
+                                    MainActivity.this,
+                                    "Location not found",
+                                    Toast.LENGTH_SHORT
+                            ).show();
+                        }
+                    });
+                }).start();
+
+                return true;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                return false;
+            }
+        });
+
+        locationOverlay.runOnFirstFix(() -> {
+
+            new Thread(() -> {
+                while (true) {
+                    GeoPoint userLoc = locationOverlay.getMyLocation();
+                    if (userLoc != null) {
+                        mapViewModel.updateUserLocation(userLoc);
+                    }
+                    try { Thread.sleep(2000); } catch (Exception e) {}
+                }
+            }).start();
+        });
+
+
     }
 
     private void setupMap() {
@@ -160,6 +208,13 @@ public class MainActivity extends AppCompatActivity {
             mapView.getOverlays().remove(destinationMarker);
         }
 
+        if (currentRouteLine != null) {
+            mapView.getOverlays().remove(currentRouteLine);
+            currentRouteLine = null;
+        }
+
+        mapViewModel.resetRouteState();
+
         destinationMarker = new Marker(mapView);
         destinationMarker.setPosition(destinationPoint);
         destinationMarker.setAnchor(
@@ -169,6 +224,7 @@ public class MainActivity extends AppCompatActivity {
         destinationMarker.setTitle("Destination");
 
         mapView.getOverlays().add(destinationMarker);
+
         mapViewModel.setDestination(startPoint, destinationPoint);
     }
 
@@ -192,9 +248,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void drawRoute(List<GeoPoint> points) {
+        if (currentRouteLine != null) {
+            mapView.getOverlays().remove(currentRouteLine);
+        }
         Polyline polyline = new Polyline();
         polyline.setPoints(points);
         polyline.setWidth(8f);
+
+        currentRouteLine = polyline;
 
         mapView.getOverlays().add(polyline);
         mapView.invalidate();
