@@ -10,8 +10,10 @@ import java.net.URLEncoder;
 
 public class NominatimService {
 
-    public static GeoPoint searchPlace(String query) {
-
+    public static GeoPoint searchPlace(
+            String query,
+            GeoPoint userLocation
+    ) {
         try {
             String encodedQuery = URLEncoder.encode(query, "UTF-8");
 
@@ -19,7 +21,9 @@ public class NominatimService {
                     "https://nominatim.openstreetmap.org/search" +
                             "?q=" + encodedQuery +
                             "&format=json" +
-                            "&limit=1";
+                            "&limit=10" +
+                            "&lat=" + userLocation.getLatitude() +
+                            "&lon=" + userLocation.getLongitude();
 
             URL url = new URL(urlStr);
             HttpURLConnection conn =
@@ -30,9 +34,6 @@ public class NominatimService {
                     "MapAndNavigationsApp/1.0 (fabiharizvi2888@gmail.com)"
             );
 
-            conn.setConnectTimeout(10000);
-            conn.setReadTimeout(10000);
-
             BufferedReader reader =
                     new BufferedReader(
                             new InputStreamReader(conn.getInputStream())
@@ -40,24 +41,38 @@ public class NominatimService {
 
             StringBuilder json = new StringBuilder();
             String line;
-
             while ((line = reader.readLine()) != null) {
                 json.append(line);
             }
 
-            reader.close();
-            conn.disconnect();
-
             JSONArray arr = new JSONArray(json.toString());
-
             if (arr.length() == 0) return null;
 
-            JSONObject obj = arr.getJSONObject(0);
+            GeoPoint bestPoint = null;
+            double minDistance = Double.MAX_VALUE;
 
-            double lat = obj.getDouble("lat");
-            double lon = obj.getDouble("lon");
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject obj = arr.getJSONObject(i);
 
-            return new GeoPoint(lat, lon);
+                double lat = obj.getDouble("lat");
+                double lon = obj.getDouble("lon");
+
+                GeoPoint candidate = new GeoPoint(lat, lon);
+
+                double distance =
+                        userLocation.distanceToAsDouble(candidate);
+
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    bestPoint = candidate;
+                }
+            }
+
+            if (minDistance > 50_000) {
+                return null;
+            }
+
+            return bestPoint;
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -65,3 +80,4 @@ public class NominatimService {
         }
     }
 }
+

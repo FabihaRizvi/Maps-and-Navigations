@@ -7,6 +7,8 @@ import android.location.LocationManager;
 import android.os.Bundle;
 import android.provider.Settings;
 import androidx.appcompat.widget.SearchView;
+
+import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -54,13 +56,33 @@ public class MainActivity extends AppCompatActivity {
 
         observeRoute();
 
+        TextView tvDistance = findViewById(R.id.tvDistance);
+
+        mapViewModel.remainingDistance.observe(this, distance -> {
+
+            if (distance == null) return;
+
+            if (distance < 1000) {
+                tvDistance.setText("Remaining: " + distance.intValue() + " m");
+            } else {
+                tvDistance.setText(
+                        String.format("Remaining: %.2f km", distance / 1000)
+                );
+            }
+        });
+
+
         SearchView searchView = findViewById(R.id.searchView);
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
             public boolean onQueryTextSubmit(String query) {
 
                 new Thread(() -> {
-                    GeoPoint point = NominatimService.searchPlace(query);
+                    GeoPoint userLoc = locationOverlay.getMyLocation();
+                    if (userLoc == null) return;
+
+                    GeoPoint point =
+                            NominatimService.searchPlace(query, userLoc);
 
                     runOnUiThread(() -> {
                         if (point != null) {
@@ -95,6 +117,12 @@ public class MainActivity extends AppCompatActivity {
                     try { Thread.sleep(2000); } catch (Exception e) {}
                 }
             }).start();
+        });
+
+        mapViewModel.navigationMessage.observe(this, msg -> {
+            if (msg != null) {
+                Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+            }
         });
 
 

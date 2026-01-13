@@ -16,12 +16,17 @@ public class MapViewModel extends AndroidViewModel {
 
     private List<GeoPoint> currentRoute;
     private int currentIndex = 0;
+    private long lastRerouteTime = 0;
     public MutableLiveData<List<GeoPoint>> routeLiveData = new MutableLiveData<>();
     public MutableLiveData<GeoPoint> userLocation = new MutableLiveData<>();
     public MutableLiveData<String> navigationMessage = new MutableLiveData<>();
+    public MutableLiveData<Double> remainingDistance = new MutableLiveData<>();
+
 
     public MapViewModel(@NonNull Application application) {
         super(application);
+        remainingDistance.setValue(0.0);
+
     }
 
     public void setDestination(GeoPoint start, GeoPoint end) {
@@ -83,14 +88,17 @@ public class MapViewModel extends AndroidViewModel {
     public void updateUserLocation(GeoPoint loc) {
         userLocation.postValue(loc);
         onUserLocationChanged(loc);
+        calculateRemainingDistance(loc);
     }
 
     private void onUserLocationChanged(GeoPoint userLoc) {
 
         if (currentRoute == null || currentRoute.isEmpty()) return;
-        if (currentIndex >= currentRoute.size()) {
-            navigationMessage.postValue("Destination reached 🎉");
-            return;
+        GeoPoint last = currentRoute.get(currentRoute.size() - 1);
+        if (userLoc.distanceToAsDouble(last) < 20) {
+            navigationMessage.postValue("You have arrived");
+            currentRoute = null;
+            remainingDistance.postValue(0.0);
         }
 
         GeoPoint targetPoint = currentRoute.get(currentIndex);
@@ -104,10 +112,12 @@ public class MapViewModel extends AndroidViewModel {
         }
 
         if (distance > 40) {
-            navigationMessage.postValue(
-                    "You missed the turn. Re-routing..."
-            );
-            reroute(userLoc);
+            long now = System.currentTimeMillis();
+            if (now - lastRerouteTime > 8000) {
+                lastRerouteTime = now;
+                navigationMessage.postValue("You missed the turn. Re-routing...");
+                reroute(userLoc);
+            }
         }
     }
 
@@ -124,5 +134,25 @@ public class MapViewModel extends AndroidViewModel {
     public void resetRouteState() {
         currentIndex = 0;
         currentRoute = null;
+        remainingDistance.postValue(0.0);
+    }
+
+    private void calculateRemainingDistance(GeoPoint userLoc) {
+
+        if (currentRoute == null || currentIndex >= currentRoute.size()) {
+            remainingDistance.postValue(0.0);
+            return;
+        }
+
+        double distance = 0;
+
+        distance += userLoc.distanceToAsDouble(currentRoute.get(currentIndex));
+
+        for (int i = currentIndex; i < currentRoute.size() - 1; i++) {
+            distance += currentRoute.get(i)
+                    .distanceToAsDouble(currentRoute.get(i + 1));
+        }
+
+        remainingDistance.postValue(distance);
     }
 }
